@@ -1,7 +1,7 @@
 #!/bin/sh
 #
 # Copyright 2016 Sylvia van Os <iamsylvie@openmailbox.org>
-# 
+#
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
@@ -79,6 +79,11 @@ main() {
 }
 
 info() {
+    if [ ! -f "$config_state_directory/mplayer_pid" ]; then
+        echo "Mplayer does not appear to be running. Did you forget to start the daemon?" >&2
+        return 1
+    fi
+
     echo "get_file_name" >"$config_state_directory/mplayer_input"
     echo "get_meta_artist" >"$config_state_directory/mplayer_input"
     echo "get_meta_title" >"$config_state_directory/mplayer_input"
