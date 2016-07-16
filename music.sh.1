@@ -1,0 +1,23 @@
+.Dd July 15, 2016
+.Dt MUSIC.SH 1
+.Os
+.Sh NAME
+.Nm music.sh
+.Nd A very simple music player
+.Sh SYNOPSIS
+.Nm
+.Op Fl d
+.Op Fl n
+.Sh DESCRIPTION
+.Nm
+is a simple music player working in a client-server-like system.
+It requires the deamon to run.
+When no argument is used, it displays info about the currently playing song.
+.Pp
+Its arguments are as follows:
+.Bl -tag -width Ds
+.It Fl d
+Start the deamon, which will start playing random songs.
+.It Fl n
+Play the next song.
+.El 
