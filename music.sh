@@ -28,6 +28,11 @@ if [ ! -d "$config_music_directory" ]; then
     exit 1
 fi
 
+if [ ! -d "$config_queue_directory" ]; then
+    echo "config_queue_directory is not a valid directory" 1>&2
+    exit 1
+fi
+
 if [ ! -d "$config_state_directory" ]; then
     echo "config_state_directory is not a valid directory" 1>&2
     exit 1
@@ -52,7 +57,7 @@ main() {
 
     playSong() {
         getRandomSong() {
-            find "$config_music_directory" -type f | shuf -n1
+            find "$config_music_directory" ! -name "$(printf "*\n*")" -type f | shuf -n1
         }
 
         if [ -f "$config_state_directory/mplayer_pid" ]; then
@@ -62,11 +67,19 @@ main() {
             fi
         fi
 
-        song="$(getRandomSong)"
-        if [ ! "$?" ]; then
-            echo "No songs in $config_music_directory" 1>&2
-            return 2
-        fi
+        for queue_entry in "$config_queue_directory/"*; do
+            if [ ! -e "$queue_entry" ]; then
+                song="$(getRandomSong)"
+                if [ ! "$?" ]; then
+                   echo "No songs in $config_music_directory" 1>&2
+                   return 2
+               fi
+           else
+                song="$(readlink -f "$queue_entry")"
+                rm "$queue_entry"
+            fi
+            break
+        done
 
         mplayer "$song" -vo null -quiet -slave -input file="$config_state_directory/mplayer_input" >"$config_state_directory/mplayer_output" 2>/dev/null &
         echo "$!" > "$config_state_directory/mplayer_pid"
@@ -95,6 +108,36 @@ info() {
     tail -n7 "$config_state_directory/mplayer_output"
 }
 
+enqueue() {
+    for queue_number in "$config_queue_directory/"*; do
+        if [ ! -e "$queue_number" ]; then
+            number=-1
+        else
+            number="$queue_number"
+        fi
+    done
+
+    find "$config_music_directory" ! -name "$(printf "*\n*")" -type f | sort
+    while IFS= read -r song; do
+        result=$(ffprobe "$song" 2>&1 | grep -A90 'Metadata:' | tr '[:upper:]' '[:lower:]')
+        correct=1
+        for arg in "$@"; do
+            arg="$(echo "$arg" | tr '[:upper:]' '[:lower:]')"
+            tag="$(echo "$arg" | cut -d'=' -f1)"
+            query="$(echo "$arg" | cut -d'=' -f2-)"
+            case "$(echo "$result" | sed -n -e 's/^\s*'"$tag"'.*: //p')" in
+                *"$query"*) ;; # Still fine
+                *) correct=0
+            esac
+        done
+        if [ "$correct" = 1 ]; then
+            number=$((number+1))
+            ln -s "$song" "$config_queue_directory/$number"
+            echo "Enqueued $song"
+        fi
+    done
+}
+
 next() {
     if kill "$(cat "$config_state_directory/mplayer_pid")" 2>/dev/null; then
         exit 0
@@ -106,10 +149,13 @@ next() {
 
 action="info"
 
-while getopts ":dn" opt; do
+while getopts ":den" opt; do
     case $opt in
         d)
             action="main"
+            ;;
+        e)
+            action="enqueue"
             ;;
         n)
             action="next"
@@ -121,4 +167,5 @@ while getopts ":dn" opt; do
     esac
 done
 
-$action
+shift # Remove the empty argument left by getopts
+$action "$@"

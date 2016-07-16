@@ -1,4 +1,5 @@
 #!/bin/sh
 
 config_music_directory="$HOME/Music/"
+config_queue_directory="$HOME/.music_sh/queue"
 config_state_directory="$HOME/.music_sh/state"
